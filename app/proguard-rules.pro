@@ -1,2 +1,4 @@
 -keep class com.boletodigital.app.data.** { *; }
 -dontwarn kotlinx.coroutines.**
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**

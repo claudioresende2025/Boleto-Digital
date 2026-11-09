@@ -19,15 +19,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DocumentScanner
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,11 +46,15 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import androidx.compose.ui.Modifier as ComposeModifier
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     boletos: List<Boleto>,
-    onAdd: () -> Unit,
+    onLerBoleto: () -> Unit,
+    onImportarPdf: () -> Unit,
+    onAddManual: () -> Unit,
     onOpen: (Long) -> Unit
 ) {
     val hoje = LocalDate.now()
@@ -49,11 +62,13 @@ fun HomeScreen(
     val economiaPossivel = pendentes
         .filter { it.descontoAindaValido(hoje) }
         .sumOf { it.descontoPix }
+    var mostrarOpcoes by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onAdd,
+                onClick = { mostrarOpcoes = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -62,13 +77,13 @@ fun HomeScreen(
         }
     ) { padding ->
         Column(
-            modifier = Modifier
+            modifier = ComposeModifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(padding)
         ) {
             Box(
-                modifier = Modifier
+                modifier = ComposeModifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.primary)
                     .padding(horizontal = 20.dp, vertical = 28.dp)
@@ -80,14 +95,14 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(ComposeModifier.height(6.dp))
                     Text(
-                        text = "PIX na mão antes do dia 10 — pague R$ 150 e economize.",
+                        text = "Leia o boleto do mês e gere automaticamente os próximos.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                     )
                     if (economiaPossivel > 0) {
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(ComposeModifier.height(16.dp))
                         Text(
                             text = "Desconto disponível agora: ${economiaPossivel.emReais()}",
                             style = MaterialTheme.typography.titleMedium,
@@ -100,7 +115,7 @@ fun HomeScreen(
 
             if (boletos.isEmpty()) {
                 Column(
-                    modifier = Modifier
+                    modifier = ComposeModifier
                         .fillMaxSize()
                         .padding(32.dp),
                     verticalArrangement = Arrangement.Center,
@@ -111,9 +126,9 @@ fun HomeScreen(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(ComposeModifier.height(8.dp))
                     Text(
-                        "Toque em + e cole o código PIX do boleto em papel. Assim você paga no app do banco a qualquer hora.",
+                        "Toque em + → Ler boleto, aponte para o QR PIX e escolha até qual mês gerar.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                     )
@@ -130,6 +145,87 @@ fun HomeScreen(
             }
         }
     }
+
+    if (mostrarOpcoes) {
+        ModalBottomSheet(
+            onDismissRequest = { mostrarOpcoes = false },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = ComposeModifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    "Adicionar boletos",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(ComposeModifier.height(16.dp))
+                OpcaoAdd(
+                    icone = Icons.Default.DocumentScanner,
+                    titulo = "Ler boleto",
+                    descricao = "Abre a câmera, lê o QR PIX e gera os meses seguintes"
+                ) {
+                    mostrarOpcoes = false
+                    onLerBoleto()
+                }
+                Spacer(ComposeModifier.height(8.dp))
+                OpcaoAdd(
+                    icone = Icons.Default.PictureAsPdf,
+                    titulo = "Importar PDF / fatura",
+                    descricao = "Puxa o boleto ou fatura em PDF e extrai o PIX automaticamente"
+                ) {
+                    mostrarOpcoes = false
+                    onImportarPdf()
+                }
+                Spacer(ComposeModifier.height(8.dp))
+                OpcaoAdd(
+                    icone = Icons.Default.Edit,
+                    titulo = "Cadastro manual",
+                    descricao = "Digitar título, valor e PIX sem usar a câmera"
+                ) {
+                    mostrarOpcoes = false
+                    onAddManual()
+                }
+                Spacer(ComposeModifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpcaoAdd(
+    icone: androidx.compose.ui.graphics.vector.ImageVector,
+    titulo: String,
+    descricao: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = ComposeModifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icone,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = ComposeModifier.size(28.dp)
+        )
+        Spacer(ComposeModifier.size(14.dp))
+        Column {
+            Text(titulo, fontWeight = FontWeight.SemiBold)
+            Text(
+                descricao,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+    }
 }
 
 @Composable
@@ -144,7 +240,7 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
     }
 
     Column(
-        modifier = Modifier
+        modifier = ComposeModifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surface)
@@ -152,11 +248,11 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
             .padding(16.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = ComposeModifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = ComposeModifier.weight(1f)) {
                 Text(
                     boleto.titulo,
                     style = MaterialTheme.typography.titleMedium,
@@ -172,12 +268,12 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
                 imageVector = if (boleto.pago) Icons.Filled.CheckCircle else Icons.Outlined.Schedule,
                 contentDescription = null,
                 tint = if (boleto.pago) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(28.dp)
+                modifier = ComposeModifier.size(28.dp)
             )
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(ComposeModifier.height(12.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = ComposeModifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
@@ -194,7 +290,7 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
                 )
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(ComposeModifier.height(10.dp))
         Text(
             text = status,
             style = MaterialTheme.typography.labelLarge,
@@ -205,7 +301,7 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
             }
         )
         if (boleto.codigoPix.isBlank()) {
-            Spacer(Modifier.height(4.dp))
+            Spacer(ComposeModifier.height(4.dp))
             Text(
                 "PIX ainda não cadastrado",
                 style = MaterialTheme.typography.bodySmall,

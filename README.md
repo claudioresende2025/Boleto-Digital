@@ -4,6 +4,8 @@ App Android para digitalizar boletos em papel com vencimento no dia 10. Guarde o
 
 ## Funcionalidades
 
+- Leitura do boleto por câmera (QR PIX)
+- Geração automática dos meses seguintes até a data escolhida
 - Cadastro de boletos digitais com valor, desconto e vencimento
 - Cópia rápida do código PIX para colar no app do banco
 - Alerta de desconto válido **antes do dia 10**

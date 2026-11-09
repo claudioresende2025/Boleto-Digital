@@ -22,6 +22,12 @@ interface BoletoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun inserir(boleto: Boleto): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun inserirTodos(boletos: List<Boleto>): List<Long>
+
+    @Query("SELECT vencimento FROM boletos")
+    suspend fun listarVencimentos(): List<String>
+
     @Update
     suspend fun atualizar(boleto: Boleto)
 

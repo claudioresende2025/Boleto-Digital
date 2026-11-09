@@ -5,18 +5,33 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.boletodigital.app.data.Boleto
 import com.boletodigital.app.data.BoletoRepository
+import com.boletodigital.app.data.LeituraBoleto
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.YearMonth
 
 class BoletoViewModel(private val repository: BoletoRepository) : ViewModel() {
 
     val boletos: StateFlow<List<Boleto>> = repository.observarTodos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val _leituraPendente = MutableStateFlow<LeituraBoleto?>(null)
+    val leituraPendente = _leituraPendente.asStateFlow()
+
     fun observar(id: Long) = repository.observarPorId(id)
+
+    fun definirLeitura(leitura: LeituraBoleto) {
+        _leituraPendente.value = leitura
+    }
+
+    fun limparLeitura() {
+        _leituraPendente.value = null
+    }
 
     fun salvar(
         id: Long = 0,
@@ -42,6 +57,52 @@ class BoletoViewModel(private val repository: BoletoRepository) : ViewModel() {
             )
             val savedId = repository.salvar(boleto)
             onDone(savedId)
+        }
+    }
+
+    fun gerarSerie(
+        titulo: String,
+        mesInicio: YearMonth,
+        mesFim: YearMonth,
+        diaVencimento: Int,
+        valorCheio: Double,
+        descontoPix: Double,
+        codigoPixLido: String,
+        reutilizarPix: Boolean,
+        onDone: (Int) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val inicio = if (mesInicio <= mesFim) mesInicio else mesFim
+            val fim = if (mesInicio <= mesFim) mesFim else mesInicio
+            val existentes = repository.listarVencimentos().toHashSet()
+            val novos = mutableListOf<Boleto>()
+            var mes = inicio
+            var indice = 0
+            while (!mes.isAfter(fim)) {
+                val dia = diaVencimento.coerceIn(1, mes.lengthOfMonth())
+                val vencimento = mes.atDay(dia).toString()
+                if (vencimento !in existentes) {
+                    val pix = when {
+                        indice == 0 -> codigoPixLido
+                        reutilizarPix -> codigoPixLido
+                        else -> ""
+                    }
+                    novos += Boleto(
+                        titulo = titulo.trim().ifBlank { "Mensalidade" },
+                        vencimento = vencimento,
+                        valorCheio = valorCheio,
+                        descontoPix = descontoPix,
+                        codigoPix = pix
+                    )
+                }
+                mes = mes.plusMonths(1)
+                indice++
+            }
+            if (novos.isNotEmpty()) {
+                repository.inserirTodos(novos)
+            }
+            limparLeitura()
+            onDone(novos.size)
         }
     }
 

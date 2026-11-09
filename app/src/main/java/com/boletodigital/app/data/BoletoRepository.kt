@@ -10,5 +10,7 @@ class BoletoRepository(private val dao: BoletoDao) {
         dao.atualizar(boleto)
         boleto.id
     }
+    suspend fun inserirTodos(boletos: List<Boleto>): List<Long> = dao.inserirTodos(boletos)
+    suspend fun listarVencimentos(): List<String> = dao.listarVencimentos()
     suspend fun excluir(boleto: Boleto) = dao.excluir(boleto)
 }
