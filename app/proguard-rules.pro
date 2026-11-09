@@ -1,0 +1,2 @@
+-keep class com.boletodigital.app.data.** { *; }
+-dontwarn kotlinx.coroutines.**
