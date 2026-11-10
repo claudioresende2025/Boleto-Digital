@@ -1,7 +1,9 @@
 package com.boletodigital.app.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,17 +21,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,16 +58,17 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
-import androidx.compose.ui.Modifier as ComposeModifier
+import androidx.compose.ui.Modifier
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     boletos: List<Boleto>,
     onLerBoleto: () -> Unit,
     onImportarPdf: () -> Unit,
     onAddManual: () -> Unit,
-    onOpen: (Long) -> Unit
+    onOpen: (Long) -> Unit,
+    onExcluirSelecionados: (Set<Long>) -> Unit
 ) {
     val hoje = LocalDate.now()
     val pendentes = boletos.filter { !it.pago }
@@ -63,59 +76,124 @@ fun HomeScreen(
         .filter { it.descontoAindaValido(hoje) }
         .sumOf { it.descontoPix }
     var mostrarOpcoes by remember { mutableStateOf(false) }
+    var modoSelecao by remember { mutableStateOf(false) }
+    var selecionados by remember { mutableStateOf(setOf<Long>()) }
+    var confirmarExclusao by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
+        topBar = {
+            if (modoSelecao) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            if (selecionados.isEmpty()) "Selecionar boletos"
+                            else "${selecionados.size} selecionado(s)"
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            modoSelecao = false
+                            selecionados = emptySet()
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Cancelar seleção")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            selecionados = if (selecionados.size == boletos.size) {
+                                emptySet()
+                            } else {
+                                boletos.map { it.id }.toSet()
+                            }
+                        }) {
+                            Icon(Icons.Default.SelectAll, contentDescription = "Selecionar todos")
+                        }
+                        IconButton(
+                            onClick = { confirmarExclusao = true },
+                            enabled = selecionados.isNotEmpty()
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Excluir selecionados")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { mostrarOpcoes = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Novo boleto")
+            if (!modoSelecao) {
+                Column(horizontalAlignment = Alignment.End) {
+                    if (boletos.isNotEmpty()) {
+                        FloatingActionButton(
+                            onClick = {
+                                modoSelecao = true
+                                selecionados = emptySet()
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        ) {
+                            Icon(Icons.Outlined.Checklist, contentDescription = "Selecionar para excluir")
+                        }
+                    }
+                    FloatingActionButton(
+                        onClick = { mostrarOpcoes = true },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Novo boleto")
+                    }
+                }
             }
         }
     ) { padding ->
         Column(
-            modifier = ComposeModifier
+            modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(padding)
         ) {
-            Box(
-                modifier = ComposeModifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 20.dp, vertical = 28.dp)
-            ) {
-                Column {
-                    Text(
-                        text = "Boleto Digital",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(ComposeModifier.height(6.dp))
-                    Text(
-                        text = "Leia o boleto do mês e gere automaticamente os próximos.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
-                    )
-                    if (economiaPossivel > 0) {
-                        Spacer(ComposeModifier.height(16.dp))
+            if (!modoSelecao) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.primary)
+                        .padding(horizontal = 20.dp, vertical = 28.dp)
+                ) {
+                    Column {
                         Text(
-                            text = "Desconto disponível agora: ${economiaPossivel.emReais()}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.tertiary
+                            text = "Boleto Digital",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Lista em ordem: do vencimento mais próximo ao mais distante.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                        )
+                        if (economiaPossivel > 0) {
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = "Desconto disponível agora: ${economiaPossivel.emReais()}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                     }
                 }
             }
 
             if (boletos.isEmpty()) {
                 Column(
-                    modifier = ComposeModifier
+                    modifier = Modifier
                         .fillMaxSize()
                         .padding(32.dp),
                     verticalArrangement = Arrangement.Center,
@@ -126,7 +204,7 @@ fun HomeScreen(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Spacer(ComposeModifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "Toque em + → Ler boleto, aponte para o QR PIX e escolha até qual mês gerar.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -139,7 +217,29 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(boletos, key = { it.id }) { boleto ->
-                        BoletoCard(boleto = boleto, hoje = hoje, onClick = { onOpen(boleto.id) })
+                        BoletoCard(
+                            boleto = boleto,
+                            hoje = hoje,
+                            modoSelecao = modoSelecao,
+                            selecionado = boleto.id in selecionados,
+                            onClick = {
+                                if (modoSelecao) {
+                                    selecionados = if (boleto.id in selecionados) {
+                                        selecionados - boleto.id
+                                    } else {
+                                        selecionados + boleto.id
+                                    }
+                                } else {
+                                    onOpen(boleto.id)
+                                }
+                            },
+                            onLongClick = {
+                                if (!modoSelecao) {
+                                    modoSelecao = true
+                                    selecionados = setOf(boleto.id)
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -152,7 +252,7 @@ fun HomeScreen(
             sheetState = sheetState
         ) {
             Column(
-                modifier = ComposeModifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
@@ -161,7 +261,7 @@ fun HomeScreen(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(ComposeModifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
                 OpcaoAdd(
                     icone = Icons.Default.DocumentScanner,
                     titulo = "Ler boleto",
@@ -170,7 +270,7 @@ fun HomeScreen(
                     mostrarOpcoes = false
                     onLerBoleto()
                 }
-                Spacer(ComposeModifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
                 OpcaoAdd(
                     icone = Icons.Default.PictureAsPdf,
                     titulo = "Importar PDF / fatura",
@@ -179,7 +279,7 @@ fun HomeScreen(
                     mostrarOpcoes = false
                     onImportarPdf()
                 }
-                Spacer(ComposeModifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
                 OpcaoAdd(
                     icone = Icons.Default.Edit,
                     titulo = "Cadastro manual",
@@ -188,9 +288,31 @@ fun HomeScreen(
                     mostrarOpcoes = false
                     onAddManual()
                 }
-                Spacer(ComposeModifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
             }
         }
+    }
+
+    if (confirmarExclusao) {
+        AlertDialog(
+            onDismissRequest = { confirmarExclusao = false },
+            title = { Text("Excluir ${selecionados.size} boleto(s)?") },
+            text = { Text("Os boletos selecionados serão removidos deste aparelho.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val ids = selecionados
+                        confirmarExclusao = false
+                        onExcluirSelecionados(ids)
+                        modoSelecao = false
+                        selecionados = emptySet()
+                    }
+                ) { Text("Excluir") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmarExclusao = false }) { Text("Cancelar") }
+            }
+        )
     }
 }
 
@@ -202,7 +324,7 @@ private fun OpcaoAdd(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = ComposeModifier
+        modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surface)
@@ -214,9 +336,9 @@ private fun OpcaoAdd(
             imageVector = icone,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = ComposeModifier.size(28.dp)
+            modifier = Modifier.size(28.dp)
         )
-        Spacer(ComposeModifier.size(14.dp))
+        Spacer(Modifier.size(14.dp))
         Column {
             Text(titulo, fontWeight = FontWeight.SemiBold)
             Text(
@@ -228,8 +350,16 @@ private fun OpcaoAdd(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
+private fun BoletoCard(
+    boleto: Boleto,
+    hoje: LocalDate,
+    modoSelecao: Boolean,
+    selecionado: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
     val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale("pt", "BR"))
     val dias = ChronoUnit.DAYS.between(hoje, boleto.dataVencimento())
     val status = when {
@@ -240,19 +370,28 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
     }
 
     Column(
-        modifier = ComposeModifier
+        modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
+            .background(
+                if (selecionado) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                else MaterialTheme.colorScheme.surface
+            )
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(16.dp)
     ) {
         Row(
-            modifier = ComposeModifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = ComposeModifier.weight(1f)) {
+            if (modoSelecao) {
+                Checkbox(
+                    checked = selecionado,
+                    onCheckedChange = { onClick() }
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     boleto.titulo,
                     style = MaterialTheme.typography.titleMedium,
@@ -264,16 +403,18 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
                 )
             }
-            Icon(
-                imageVector = if (boleto.pago) Icons.Filled.CheckCircle else Icons.Outlined.Schedule,
-                contentDescription = null,
-                tint = if (boleto.pago) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
-                modifier = ComposeModifier.size(28.dp)
-            )
+            if (!modoSelecao) {
+                Icon(
+                    imageVector = if (boleto.pago) Icons.Filled.CheckCircle else Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    tint = if (boleto.pago) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
-        Spacer(ComposeModifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
         Row(
-            modifier = ComposeModifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
@@ -290,7 +431,7 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
                 )
             }
         }
-        Spacer(ComposeModifier.height(10.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
             text = status,
             style = MaterialTheme.typography.labelLarge,
@@ -301,7 +442,7 @@ private fun BoletoCard(boleto: Boleto, hoje: LocalDate, onClick: () -> Unit) {
             }
         )
         if (boleto.codigoPix.isBlank()) {
-            Spacer(ComposeModifier.height(4.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 "PIX ainda não cadastrado",
                 style = MaterialTheme.typography.bodySmall,

@@ -125,6 +125,14 @@ class BoletoViewModel(private val repository: BoletoRepository) : ViewModel() {
         }
     }
 
+    fun excluirVarios(ids: Collection<Long>, onDone: (Int) -> Unit = {}) {
+        viewModelScope.launch {
+            val lista = ids.distinct()
+            repository.excluirPorIds(lista)
+            onDone(lista.size)
+        }
+    }
+
     class Factory(private val repository: BoletoRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

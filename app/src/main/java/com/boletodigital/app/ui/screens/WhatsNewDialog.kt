@@ -13,7 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Modifier as ComposeModifier
+import androidx.compose.ui.Modifier
 
 @Composable
 fun WhatsNewDialog(
@@ -40,7 +40,7 @@ fun WhatsNewDialog(
                     "• Gerar automaticamente os meses seguintes até a data que você escolher",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Spacer(ComposeModifier.height(4.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     "Instale este APK por cima da versão anterior para manter seus boletos.",
                     style = MaterialTheme.typography.bodySmall,
@@ -51,7 +51,7 @@ fun WhatsNewDialog(
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                modifier = ComposeModifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
             ) {

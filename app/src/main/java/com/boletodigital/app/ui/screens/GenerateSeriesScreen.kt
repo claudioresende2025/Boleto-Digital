@@ -41,7 +41,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-import androidx.compose.ui.Modifier as ComposeModifier
+import androidx.compose.ui.Modifier
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,9 +69,19 @@ fun GenerateSeriesScreen(
     var fimTexto by remember { mutableStateOf(mesFimPadrao.format(mesFmt)) }
     var diaTexto by remember { mutableStateOf("10") }
     var valorTexto by remember {
-        mutableStateOf((leitura.valorDetectado ?: 160.0).toString().replace('.', ','))
+        mutableStateOf(
+            leitura.valorDetectado
+                ?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString().replace('.', ',') }
+                .orEmpty()
+        )
     }
-    var descontoTexto by remember { mutableStateOf("10") }
+    var descontoTexto by remember {
+        mutableStateOf(
+            leitura.descontoSugerido.let {
+                if (it % 1.0 == 0.0) it.toInt().toString() else it.toString().replace('.', ',')
+            }
+        )
+    }
     var reutilizarPix by remember { mutableStateOf(false) }
     var erro by remember { mutableStateOf<String?>(null) }
 
@@ -101,7 +111,7 @@ fun GenerateSeriesScreen(
         }
     ) { padding ->
         Column(
-            modifier = ComposeModifier
+            modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(padding)
@@ -122,7 +132,16 @@ fun GenerateSeriesScreen(
                 color = MaterialTheme.colorScheme.secondary
             )
             if (leitura.valorDetectado != null) {
-                Text("Valor identificado no PIX: ${leitura.valorDetectado.emReais()}")
+                Text(
+                    "Valor identificado no PIX: ${leitura.valorDetectado.emReais()}",
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Text(
+                    "Não foi possível ler o valor no PIX. Preencha o valor manualmente.",
+                    color = MaterialTheme.colorScheme.error
+                )
             }
             Text(
                 "PIX capturado (${leitura.codigoPix.length} caracteres).",
@@ -134,7 +153,7 @@ fun GenerateSeriesScreen(
                 value = titulo,
                 onValueChange = { titulo = it },
                 label = { Text("Título") },
-                modifier = ComposeModifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
             OutlinedTextField(
@@ -142,7 +161,7 @@ fun GenerateSeriesScreen(
                 onValueChange = { inicioTexto = it },
                 label = { Text("Mês inicial (MM/aaaa)") },
                 supportingText = { Text("Ex.: 11/2026 — mês do boleto lido") },
-                modifier = ComposeModifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
             OutlinedTextField(
@@ -150,7 +169,7 @@ fun GenerateSeriesScreen(
                 onValueChange = { fimTexto = it },
                 label = { Text("Gerar até o mês (MM/aaaa)") },
                 supportingText = { Text("Ex.: 11/2027 — cria todos os meses até esta data") },
-                modifier = ComposeModifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
             OutlinedTextField(
@@ -158,21 +177,28 @@ fun GenerateSeriesScreen(
                 onValueChange = { diaTexto = it.filter { ch -> ch.isDigit() }.take(2) },
                 label = { Text("Dia do vencimento") },
                 supportingText = { Text("Padrão: dia 10") },
-                modifier = ComposeModifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
             OutlinedTextField(
                 value = valorTexto,
                 onValueChange = { valorTexto = it },
-                label = { Text("Valor cheio (R$)") },
-                modifier = ComposeModifier.fillMaxWidth(),
+                label = { Text("Valor do boleto (R$)") },
+                supportingText = {
+                    Text(
+                        if (leitura.valorDetectado != null) "Preenchido pela leitura do boleto/PIX"
+                        else "Informe o valor exatamente como no boleto"
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
             OutlinedTextField(
                 value = descontoTexto,
                 onValueChange = { descontoTexto = it },
                 label = { Text("Desconto PIX antecipado (R$)") },
-                modifier = ComposeModifier.fillMaxWidth(),
+                supportingText = { Text("Se o valor lido já é o com desconto, deixe 0") },
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
@@ -204,7 +230,7 @@ fun GenerateSeriesScreen(
                 Text(erro!!, color = MaterialTheme.colorScheme.error)
             }
 
-            Spacer(ComposeModifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
                     val inicio = runCatching { YearMonth.parse(inicioTexto.trim(), mesFmt) }.getOrNull()
@@ -218,19 +244,24 @@ fun GenerateSeriesScreen(
                         erro = "Dia de vencimento inválido."
                         return@Button
                     }
+                    val valor = valorTexto.paraDoubleOuPadrao(-1.0)
+                    if (valor <= 0) {
+                        erro = "Informe o valor do boleto lido (maior que zero)."
+                        return@Button
+                    }
                     erro = null
                     onGerar(
                         titulo,
                         inicio,
                         fim,
                         dia,
-                        valorTexto.paraDoubleOuPadrao(160.0),
-                        descontoTexto.paraDoubleOuPadrao(10.0),
+                        valor,
+                        descontoTexto.paraDoubleOuPadrao(0.0),
                         reutilizarPix
                     )
                     Toast.makeText(context, "Gerando boletos…", Toast.LENGTH_SHORT).show()
                 },
-                modifier = ComposeModifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Gerar boletos automaticamente")
             }

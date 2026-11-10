@@ -167,7 +167,12 @@ private fun BoletoDigitalApp(repository: BoletoRepository, activity: ComponentAc
                     }
                 },
                 onAddManual = { navController.navigate("edit/0") },
-                onOpen = { id -> navController.navigate("detail/$id") }
+                onOpen = { id -> navController.navigate("detail/$id") },
+                onExcluirSelecionados = { ids ->
+                    viewModel.excluirVarios(ids) { qtd ->
+                        Toast.makeText(context, "$qtd boleto(s) excluído(s).", Toast.LENGTH_SHORT).show()
+                    }
+                }
             )
         }
         composable("scan") {

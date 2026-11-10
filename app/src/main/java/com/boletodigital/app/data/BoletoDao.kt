@@ -10,8 +10,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BoletoDao {
-    @Query("SELECT * FROM boletos ORDER BY vencimento DESC, id DESC")
+    @Query("SELECT * FROM boletos ORDER BY vencimento ASC, id ASC")
     fun observarTodos(): Flow<List<Boleto>>
+
+    @Query("DELETE FROM boletos WHERE id IN (:ids)")
+    suspend fun excluirPorIds(ids: List<Long>)
 
     @Query("SELECT * FROM boletos WHERE id = :id LIMIT 1")
     fun observarPorId(id: Long): Flow<Boleto?>

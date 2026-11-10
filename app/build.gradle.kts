@@ -13,8 +13,8 @@ android {
         applicationId = "com.boletodigital.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.2.2"
+        versionCode = 7
+        versionName = "1.2.3"
 
         // APK universal com suporte a 32 bits (armeabi-v7a) e 64 bits (arm64-v8a)
         ndk {

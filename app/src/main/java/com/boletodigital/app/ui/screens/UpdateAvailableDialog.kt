@@ -16,7 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.boletodigital.app.update.RemoteUpdate
-import androidx.compose.ui.Modifier as ComposeModifier
+import androidx.compose.ui.Modifier
 
 @Composable
 fun UpdateAvailableDialog(
@@ -44,10 +44,10 @@ fun UpdateAvailableDialog(
                     Text(update.notes, style = MaterialTheme.typography.bodySmall)
                 }
                 if (baixando) {
-                    Spacer(ComposeModifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(
                         progress = { progresso / 100f },
-                        modifier = ComposeModifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Text("Baixando… $progresso%", style = MaterialTheme.typography.labelLarge)
                 }
@@ -57,7 +57,7 @@ fun UpdateAvailableDialog(
             Button(
                 onClick = onAtualizar,
                 enabled = !baixando,
-                modifier = ComposeModifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
             ) {
@@ -68,7 +68,7 @@ fun UpdateAvailableDialog(
             OutlinedButton(
                 onClick = onDepois,
                 enabled = !baixando,
-                modifier = ComposeModifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
             ) {

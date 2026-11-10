@@ -56,7 +56,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
-import androidx.compose.ui.Modifier as ComposeModifier
+import androidx.compose.ui.Modifier
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,22 +88,7 @@ fun ScanScreen(
     fun concluirComPayload(payload: String) {
         if (!jaLeu.compareAndSet(false, true)) return
         processando = true
-        val limpo = payload.trim()
-        val valor = PixParser.extrairValor(limpo)
-        val valorCheio = when {
-            valor == null -> 160.0
-            valor <= 150.0 -> valor + 10.0
-            else -> valor
-        }
-        val referencia = YearMonth.from(LocalDate.now()).atDay(10)
-        onLido(
-            LeituraBoleto(
-                codigoPix = limpo,
-                valorDetectado = valorCheio,
-                dataReferencia = referencia,
-                tituloSugerido = "Mensalidade"
-            )
-        )
+        onLido(com.boletodigital.app.util.LeituraFactory.aPartirDoPix(payload))
     }
 
     Scaffold(
@@ -124,19 +109,19 @@ fun ScanScreen(
         }
     ) { padding ->
         Column(
-            modifier = ComposeModifier
+            modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(padding)
         ) {
             Text(
                 text = "Aponte a câmera para o QR Code PIX do boleto em papel.",
-                modifier = ComposeModifier.padding(16.dp),
+                modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
 
             Box(
-                modifier = ComposeModifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(horizontal = 16.dp),
@@ -144,7 +129,7 @@ fun ScanScreen(
             ) {
                 if (hasCamera) {
                     AndroidView(
-                        modifier = ComposeModifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize(),
                         factory = { ctx ->
                             val previewView = PreviewView(ctx)
                             val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
@@ -221,7 +206,7 @@ fun ScanScreen(
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("A câmera ainda não foi liberada.", fontWeight = FontWeight.SemiBold)
-                        Spacer(ComposeModifier.height(12.dp))
+                        Spacer(Modifier.height(12.dp))
                         Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
                             Text("Permitir câmera")
                         }
@@ -229,22 +214,22 @@ fun ScanScreen(
                 }
             }
 
-            Column(modifier = ComposeModifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     "Se o QR não ler, cole o PIX Copia e Cola abaixo:",
                     style = MaterialTheme.typography.labelLarge
                 )
-                Spacer(ComposeModifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = pixManual,
                     onValueChange = { pixManual = it },
-                    modifier = ComposeModifier
+                    modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),
                     minLines = 3,
                     label = { Text("PIX Copia e Cola") }
                 )
-                Spacer(ComposeModifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = {
                         if (pixManual.isBlank()) {
@@ -254,7 +239,7 @@ fun ScanScreen(
                         }
                     },
                     enabled = !processando,
-                    modifier = ComposeModifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Usar este PIX e continuar")
                 }

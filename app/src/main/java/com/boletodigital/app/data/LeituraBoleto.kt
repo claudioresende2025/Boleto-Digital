@@ -6,5 +6,6 @@ data class LeituraBoleto(
     val codigoPix: String,
     val valorDetectado: Double?,
     val dataReferencia: LocalDate,
-    val tituloSugerido: String = "Mensalidade"
+    val tituloSugerido: String = "Mensalidade",
+    val descontoSugerido: Double = 0.0
 )
